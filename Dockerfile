@@ -1,17 +1,20 @@
-# base node image
+# Base node image
 FROM node:lts-alpine as base
 
-# set for base and all layer that inherit from it
-ENV NODE_ENV production
+# Install bash and curl since Alpine uses ash by default
+RUN apk add --no-cache bash curl
 
-# Install openssl for Prisma
-# RUN apk -U add --update-cache openssl sqlite
+# Switch the default shell to bash for subsequent RUN instructions
+SHELL ["/bin/bash", "-c"]
+
+# Set environment variable for the base layer
+ENV NODE_ENV=production
 
 # Create user and set ownership and permissions as required
-RUN <<EOT 
-addgroup student && 
-adduser -D -H -g "student" -G student student && 
-mkdir /cst8918-a01 && 
+RUN <<EOT
+addgroup student &&
+adduser -D -H -g "student" -G student student &&
+mkdir /cst8918-a01 &&
 chown -R student:student /cst8918-a01
 EOT
 
@@ -20,7 +23,7 @@ FROM base as deps
 
 WORKDIR /cst8918-a01
 
-ADD package.json ./
+ADD package.json ./ 
 RUN npm install --include=dev
 
 # Setup production node_modules
@@ -29,7 +32,7 @@ FROM base as production-deps
 WORKDIR /cst8918-a01
 
 COPY --from=deps /cst8918-a01/node_modules /cst8918-a01/node_modules
-ADD package.json ./
+ADD package.json ./ 
 RUN npm prune --omit=dev
 
 # Build the app
@@ -39,7 +42,7 @@ WORKDIR /cst8918-a01
 
 COPY --from=deps /cst8918-a01/node_modules /cst8918-a01/node_modules
 
-ADD . .
+ADD . . 
 RUN npm run build
 
 # Finally, build the production image with minimal footprint
@@ -47,9 +50,6 @@ FROM base
 
 ENV PORT="8080"
 ENV NODE_ENV="production"
-# BONUS: This should be injected at runtime from a secrets manager
-# We will review the solution next class
-# ENV WEATHER_API_KEY="bc2682b67f497cf9a1f5bfbdde7a4ea1"
 
 WORKDIR /cst8918-a01
 
